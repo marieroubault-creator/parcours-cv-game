@@ -16,14 +16,6 @@
  .modal-bg{ position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.55); display:flex; justify-content:center; align-items:center; z-index:9999; }
  .modal{ background:#DBE3FF; padding:20px; border-radius:12px; border:3px solid #1d1e3c; width:300px; }
  .modal button{ background:#1d1e3c; color:white; border:none; padding:8px 14px; margin-top:12px; border-radius:6px; cursor:pointer; }
-
- /* empreintes */
- .footstep-icon {
-    background: url('https://cdn-icons-png.flaticon.com/512/483/483361.png') no-repeat center;
-    background-size: contain;
-    width: 24px;
-    height: 24px;
- }
 </style>
 </head>
 <body>
@@ -45,6 +37,7 @@ let unlocked = {};
 
 // ---------------- TIMER 2h30 -------------------
 let totalSeconds = 2.5 * 3600;
+
 function updateTimer(){
   let h = Math.floor(totalSeconds/3600);
   let m = Math.floor((totalSeconds%3600)/60);
@@ -57,38 +50,41 @@ function updateTimer(){
   }
   totalSeconds--;
 }
+
+updateTimer(); // affichage initial
 setInterval(updateTimer, 1000);
 // ------------------------------------------------
 
 function updateScore(){ document.getElementById('score').textContent = score; }
 
 function showModal(pointKey, title, question, answer, link, offres) {
- const modal = document.createElement('div');
- modal.className = 'modal-bg';
- modal.innerHTML = `
- <div class="modal">
-   <h3>${title}</h3>
-   <p>${question}</p>
-   <input id="answerInput" style="padding:6px; width:90%; margin-top:10px" />
-   <p><a href="${link}" target="_blank">Site web</a></p>
-   <p><a href="${offres}" target="_blank">Offres France Travail</a></p>
-   <button onclick="checkAnswer('${pointKey}','${answer}')">Valider</button>
- </div>`;
- document.body.appendChild(modal);
+  if(document.querySelector('.modal-bg')) return; // éviter plusieurs modals ouvertes
+  const modal = document.createElement('div');
+  modal.className = 'modal-bg';
+  modal.innerHTML = `
+  <div class="modal">
+    <h3>${title}</h3>
+    <p>${question}</p>
+    <input id="answerInput" style="padding:6px; width:90%; margin-top:10px" />
+    <p><a href="${link}" target="_blank">Site web</a></p>
+    <p><a href="${offres}" target="_blank">Offres France Travail</a></p>
+    <button onclick="checkAnswer('${pointKey}','${answer}')">Valider</button>
+  </div>`;
+  document.body.appendChild(modal);
 }
 
 function checkAnswer(pointKey, answer){
- let val = document.getElementById('answerInput').value.trim().toLowerCase();
- if(val === answer.toLowerCase()){
-   score += 2;
-   updateScore();
-   unlocked[pointKey] = true;
-   document.querySelector('.modal-bg').remove();
-   revealNext(pointKey);
-   drawFootstepsAnimated(pointKey);
- } else {
-   alert("Mauvaise réponse, recommencez");
- }
+  let val = document.getElementById('answerInput').value.trim().toLowerCase();
+  if(val === answer.toLowerCase()){
+    score += 2;
+    updateScore();
+    unlocked[pointKey] = true;
+    document.querySelectorAll('.modal-bg').forEach(m => m.remove());
+    revealNext(pointKey);
+    drawDotsAnimated(pointKey);
+  } else {
+    alert("Mauvaise réponse, recommencez");
+  }
 }
 
 const points = {
@@ -108,43 +104,46 @@ const enigmes = {
 let markers = {};
 
 function addMarker(key, color){
- let marker = L.circleMarker(points[key].coords, {
-   radius:10, color:color, fillColor:color, fillOpacity:0.9
- }).addTo(map);
- markers[key] = marker;
- marker.on('click', ()=>{
-   showModal(key, points[key].name, enigmes[key].q, enigmes[key].a, enigmes[key].link, enigmes[key].offres);
- });
+  let marker = L.circleMarker(points[key].coords, {
+    radius:10, color:color, fillColor:color, fillOpacity:0.9
+  }).addTo(map);
+  markers[key] = marker;
+  marker.on('click', ()=>{ showModal(key, points[key].name, enigmes[key].q, enigmes[key].a, enigmes[key].link, enigmes[key].offres); });
 }
 
 function revealNext(key){
- let next = points[key].next;
- if(next){ addMarker(next, '#1d1e3c'); }
+  let next = points[key].next;
+  if(next){ addMarker(next, '#1d1e3c'); }
 }
 
-// Empreintes animées façon maraudeur
-function drawFootstepsAnimated(fromKey){
- let from = points[fromKey].coords;
- let toKey = points[fromKey].next;
- if(!toKey) return;
- let to = points[toKey].coords;
+// ---------------- Petits points animés ----------------
+function drawDotsAnimated(fromKey){
+  let from = points[fromKey].coords;
+  let toKey = points[fromKey].next;
+  if(!toKey) return; // pas de point suivant
+  let to = points[toKey].coords;
 
- let latStep = (to[0]-from[0]) / 12;
- let lngStep = (to[1]-from[1]) / 12;
- let stepIndex = 1;
+  let latStep = (to[0]-from[0]) / 12;
+  let lngStep = (to[1]-from[1]) / 12;
+  let stepIndex = 1;
 
- function addStep(){
-   if(stepIndex > 12) return;
-   L.marker([from[0] + latStep * stepIndex, from[1] + lngStep * stepIndex],{
-     icon: L.divIcon({ className:"footstep-icon", iconSize:[24,24] })
-   }).addTo(map);
-   stepIndex++;
-   setTimeout(addStep, 250); // apparition progressive
- }
- addStep();
+  function addDot(){
+    if(stepIndex > 12) return;
+
+    L.circleMarker([from[0] + latStep * stepIndex, from[1] + lngStep * stepIndex], {
+      radius: 5,
+      color: '#1d1e3c',
+      fillColor: '#1d1e3c',
+      fillOpacity: 0.9
+    }).addTo(map);
+
+    stepIndex++;
+    setTimeout(addDot, 200);
+  }
+  addDot();
 }
 
-// INIT
+// ---------------- INIT ----------------
 addMarker('start','red');
 </script>
 </body>
