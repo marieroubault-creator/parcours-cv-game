@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Parcours à la carte - Gagne des points en déposant des CV</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+<style>
+/* ======== FOND ANIMÉ BULLES ======== */
+body {
+  margin: 0;
+  font-family: "Marianne", Arial, sans-serif;
+  background: #f7f7f7;
+  color: #1d1e3c;
+  overflow-x: hidden;
+  position: relative;
+}
+.bubble {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.4;
+  animation: floatUp linear infinite;
+}
+@keyframes floatUp {
+  0% { transform: translateY(100vh) scale(0); opacity: 0.2; }
+  50% { opacity: 0.4; }
+  100% { transform: translateY(-100vh) scale(1); opacity: 0; }
+}
+
+/* ======== HEADER FRANCE TRAVAIL ======== */
+.ft-header {
+  background-color: #406bde;
+  color: white;
+  text-align: center;
+  padding: 6px 0;
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 1px;
+  border-bottom: 3px solid #6370c9;
+}
+
+/* ======== HEADER TITRE ======== */
+.header {
+  background: #1d1e3c;
+  color: white;
+  padding: 20px 10px;
+  text-align: center;
+  border-bottom: 8px solid #6370c9;
+}
+.header h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+/* ======== BARRE D'ÉTAT ======== */
+.status-bar {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin: 15px 0;
+}
+.status-item {
+  background: white;
+  padding: 12px 20px;
+  border-left: 6px solid #1d1e3c;
+  border-radius: 6px;
+  font-size: 18px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+/* ======== CARTE ======== */
+#map-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 10px;
+}
+#map {
+  height: 75vh;
+  width: 90%;
+  max-width: 1000px;
+  border: 4px solid #1d1e3c;
+  border-radius: 12px;
+}
+
+/* ======== POPUPS / MODALES ======== */
+.modal-bg {
+  position: fixed; top:0; left:0;
+  width: 100%; height:100%;
+  background: rgba(0,0,0,0.55);
+  display: flex; justify-content: center; align-items: center;
+  z-index: 9999;
+}
+.modal {
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 12px;
+  border: 3px solid #1d1e3c;
+  width: 320px;
+  text-align: center;
+  position: relative;
+}
+.modal button {
+  background: #1d1e3c;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-top: 12px;
+}
+.modal a {
+  font-weight: bold;
+  color: #1d1e3c;
+}
+.close-btn {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  font-size: 20px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+/* Popup Leaflet */
+.leaflet-popup-content-wrapper {
+  background: #ffffff;
+  border: 2px solid #1d1e3c;
+  border-radius: 8px;
+}
+
+/* Surbrillance */
+.highlight { color: #c40000; font-weight: bold; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .status-item { font-size: 16px; padding: 10px 12px; }
+  .header h1 { font-size: 22px; }
+  #map { height: 60vh; }
+}
+</style>
+</head>
+<body>
+
+<!-- ======== BANNIÈRE FRANCE TRAVAIL ======== -->
+<div class="ft-header">FRANCE TRAVAIL</div>
+
+<!-- ======== BANNIÈRE TITRE ======== -->
+<div class="header">
+  <h1>Parcours à la carte - Gagne des points en déposant des CV</h1>
+</div>
+
+<!-- ======== BARRE D'ÉTAT ======== -->
+<div class="status-bar">
+  <div class="status-item">Score : <span id="score">0</span></div>
+  <div class="status-item">Temps restant : <span id="timer">2:30:00</span></div>
+</div>
+
+<!-- ======== CARTE ======== -->
+<div id="map-container">
+  <div id="map"></div>
+</div>
+
+<!-- ======== SCRIPT LEAFLET ======== -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+/* ======== BULLES DE FOND ======== */
+const colors = ['#ffcc52','#406bde','#eb94c2','#6a408b','#ea6367'];
+for(let i=0;i<20;i++){
+  const bubble = document.createElement('div');
+  bubble.className='bubble';
+  let size = Math.random()*50+30;
+  bubble.style.width = bubble.style.height = size+'px';
+  bubble.style.backgroundColor = colors[Math.floor(Math.random()*colors.length)];
+  bubble.style.left = Math.random()*100+'vw';
+  bubble.style.animationDuration = (Math.random()*15+10)+'s';
+  bubble.style.animationDelay = (Math.random()*-15)+'s';
+  document.body.appendChild(bubble);
+}
+
+/* ======== INIT MAP ======== */
+let map = L.map('map').setView([48.648, -2.025], 16);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(map);
+
+/* ======== SCORE ======== */
+let score=0;
+function updateScore(){ document.getElementById('score').textContent = score; }
+
+/* ======== TIMER ======== */
+let totalSeconds = 2.5*3600;
+function updateTimer(){
+  let h=Math.floor(totalSeconds/3600);
+  let m=Math.floor((totalSeconds%3600)/60);
+  let s=Math.floor(totalSeconds%60);
+  document.getElementById('timer').textContent=`${h}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+  if(totalSeconds<=0){ alert("Perdu, retour au point de départ !"); location.reload(); }
+  totalSeconds--;
+}
+updateTimer();
+setInterval(updateTimer,1000);
+
+/* ======== POINTS & ENIGMES ======== */
+const points={
+  start:{ name:"La Perle Malouine", address:"1 rue de la Perle, Saint-Malo", coords:[48.6475,-2.026], next:"pt2" },
+  pt2:{ name:"Grand Mère Augustine", address:"10 rue des Corsaires, Saint-Malo", coords:[48.6482,-2.025], next:"pt3" },
+  pt3:{ name:"La Table Malouine", address:"5 quai Duguay-Trouin, Saint-Malo", coords:[48.6488,-2.0242], next:"pt4" },
+  pt4:{ name:"Crêperie La Duchesse Anne", address:"2 rue de l'Orme, Saint-Malo", coords:[48.6493,-2.0235], next:null }
+};
+const enigmes={
+  start:{ q:"Qui est le corsaire emblématique de Saint-Malo ?", a:"surcouf" },
+  pt2:{ q:"Comment s'appelle le palais de Saint-Malo ?", a:"le palais du grand large" },
+  pt3:{ q:"Quelle est la devise de Saint-Malo ?", a:"semper fidelis" },
+  pt4:{ q:"Île fortifiée accessible à marée basse ?", a:"ile du grand bé" }
+};
+
+let markers={}, continuousPath=[], polyline=null;
+let startIcon=L.icon({iconUrl:"https://cdn-icons-png.flaticon.com/512/535/535239.png",iconSize:[40,40],iconAnchor:[20,40]});
+
+/* Marqueur départ */
+markers["start"]=L.marker(points.start.coords,{icon:startIcon}).addTo(map)
+.bindPopup(`<b>Point de départ :</b><br>${points.start.name}<br>${points.start.address}`);
+markers["start"].on("click",()=>showEnigme("start"));
+
+/* Tracé complet */
+function updateFullPath(){ if(polyline) map.removeLayer(polyline); polyline=L.polyline(continuousPath,{color:"#1d1e3c",weight:4}).addTo(map); }
+
+/* ======== POPUPS & MODALES ======== */
+function showEnigme(key){
+  if(document.querySelector('.modal-bg')) return;
+  const modal=document.createElement('div');
+  modal.className='modal-bg';
+  modal.innerHTML=`
+    <div class="modal">
+      <span class="close-btn" onclick="closeModal()">×</span>
+      <h3>${points[key].name}</h3>
+      <p><b>Adresse :</b> ${points[key].address}</p>
+      <p>${enigmes[key].q}</p>
+      <input id="answerInput" style="padding:6px; width:90%; margin-top:10px" />
+      <button onclick="checkAnswer('${key}')">Valider</button>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+function checkAnswer(key){
+  let val=document.getElementById('answerInput').value.trim().toLowerCase();
+  if(val===enigmes[key].a){
+    score+=2; updateScore(); closeModal();
+    continuousPath.push(points[key].coords); updateFullPath();
+    let next=points[key].next;
+    if(next) revealPoint(next); else showCongrats();
+  }else alert("Mauvaise réponse !");
+}
+
+function revealPoint(key){
+  markers[key]=L.circleMarker(points[key].coords,{radius:12,color:"#1d1e3c",fillColor:"#1d1e3c",fillOpacity:1}).addTo(map);
+  markers[key].bindPopup(`<b><a href="#" onclick="showFullPopup('${key}')">${points[key].name}</a></b>`).openPopup();
+}
+
+function showFullPopup(key){
+  closeModal();
+  const p=points[key];
+  const modal=document.createElement("div");
+  modal.className="modal-bg";
+  modal.innerHTML=`
+    <div class="modal">
+      <span class="close-btn" onclick="closeModal()">×</span>
+      <h2>${p.name}</h2>
+      <p><b>Adresse :</b> ${p.address}</p>
+      <hr>
+      <p><b>Énigme :</b><br>${enigmes[key].q}</p>
+      <input id="answer2" style="padding:6px; width:90%;" />
+      <button onclick="validateNext('${key}')">Valider</button>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+function validateNext(key){
+  let val=document.getElementById("answer2").value.trim().toLowerCase();
+  if(val!==enigmes[key].a) return alert("Mauvaise réponse !");
+  closeModal(); continuousPath.push(points[key].coords); updateFullPath();
+  let next=points[key].next;
+  if(next) revealPoint(next); else showCongrats();
+}
+
+function closeModal(){ document.querySelectorAll('.modal-bg').forEach(m=>m.remove()); }
+
+function showCongrats(){
+  closeModal();
+  const modal=document.createElement("div");
+  modal.className="modal-bg";
+  modal.innerHTML=`
+    <div class="modal">
+      <span class="close-btn" onclick="closeModal()">×</span>
+      <h2>🎉 Bravo !</h2>
+      <p>Tu as terminé le parcours !</p>
+      <button onclick="zoomToStart()">Retour au point de départ</button>
+      <hr>
+      <button onclick="location.reload()">Rejouer le parcours</button>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+function zoomToStart(){
+  map.setView(points.start.coords,16,{animate:true});
+  if(polyline) polyline.setStyle({color:"#c40000"});
+  markers.start.openPopup();
+}
+</script>
+
+</body>
+</html>
