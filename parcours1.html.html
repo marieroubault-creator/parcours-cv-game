@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Parcours à la carte - Gagne des points en déposant des CV</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+body {
+  margin: 0;
+  font-family: "Marianne", Arial, sans-serif;
+  background: linear-gradient(180deg, #eef3ff 0%, #f7f7f7 100%);
+  color: #1d1e3c;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* Bandeau France Travail */
+.ft-header {
+  background: #406bde;
+  color: white;
+  text-align: center;
+  padding: 6px 0;
+  font-weight: bold;
+  font-size: 16px;
+  z-index: 10;
+  position: relative;
+}
+
+/* Bandeau titre */
+.header {
+  background: #1d1e3c;
+  color: white;
+  padding: 16px 10px;
+  text-align: center;
+  border-bottom: 6px solid #6370c9;
+  z-index: 10;
+  position: relative;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 600;
+}
+
+/* Barre d’état */
+.status-bar {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+  z-index: 10;
+  position: relative;
+}
+
+.status-item {
+  background: white;
+  padding: 10px 16px;
+  border-left: 6px solid #1d1e3c;
+  border-radius: 6px;
+  font-size: 16px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+/* Carte */
+#map-container {
+  display: flex;
+  justify-content: center;
+  position: relative;
+  z-index: 5;
+}
+
+#map {
+  height: 75vh;
+  width: 90%;
+  max-width: 1000px;
+  border: 4px solid #1d1e3c;
+  border-radius: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+/* Canvas confetti */
+#confetti-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Popups / Modales */
+.modal-bg {
+  position: fixed; top:0; left:0; width:100%; height:100%;
+  background: rgba(0,0,0,0.55);
+  display: flex; justify-content: center; align-items: center;
+  z-index: 9999;
+}
+
+.modal {
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 12px;
+  border: 3px solid #1d1e3c;
+  width: 320px;
+  text-align: center;
+  position: relative;
+}
+
+.modal button {
+  background: #1d1e3c;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-top: 12px;
+}
+
+.modal a {
+  font-weight: bold;
+  color: #1d1e3c;
+}
+
+.close-btn {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  font-size: 20px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+/* Popup leaflet */
+.leaflet-popup-content-wrapper {
+  background: #ffffff;
+  border: 2px solid #1d1e3c;
+  border-radius: 8px;
+}
+
+/* Bulles arrière-plan */
+.bubble {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.4;
+  animation: floatUp linear infinite;
+  z-index: 0; /* Derrière tout */
+}
+
+@keyframes floatUp {
+  0% { transform: translateY(100vh); opacity:0.4; }
+  100% { transform: translateY(-50px); opacity:0; }
+}
+
+/* Bulle point de départ */
+#start-bubble {
+  position: absolute;
+  background-color: #406bde;
+  color: white;
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-weight: bold;
+  cursor: pointer;
+  white-space: nowrap;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#start-bubble::after {
+  content: "";
+  width: 0; height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 8px solid #406bde;
+}
+</style>
+</head>
+<body>
+
+<div class="ft-header">FRANCE TRAVAIL</div>
+<div class="header"><h1>Parcours à la carte - Gagne des points en déposant des CV</h1></div>
+
+<div class="status-bar">
+  <div class="status-item">Score : <span id="score">0</span></div>
+  <div class="status-item">Temps restant : <span id="timer">2:30:00</span></div>
+</div>
+
+<div id="map-container">
+  <div id="map"></div>
+  <canvas id="confetti-canvas"></canvas>
+</div>
+
+<!-- Bulle point de départ -->
+<div id="start-bubble">Cliquez ici pour commencer</div>
+
+<!-- Bulles flottantes France Travail -->
+<script>
+const bubbleColors = ["#ffcc52","#406bde","#eb94c2","#6a408b","#ea6367"];
+for(let i=0;i<25;i++){
+  const b = document.createElement("div");
+  b.className="bubble";
+  const size = Math.random()*40 + 20; // tailles différentes
+  b.style.width = size+"px";
+  b.style.height = size+"px";
+  b.style.left = Math.random()*100+"%";
+  b.style.backgroundColor = bubbleColors[Math.floor(Math.random()*bubbleColors.length)];
+  b.style.animationDuration = 8 + Math.random()*10+"s";
+  b.style.top = "50px"; // sous les bandeaux
+  document.body.appendChild(b);
+}
+</script>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+<script>
+/* ===== MAP ===== */
+let map = L.map('map').setView([48.6519962, -2.0182998], 16);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(map);
+
+/* ===== SCORE ===== */
+let score = 0;
+function updateScore(){ document.getElementById('score').textContent = score; }
+
+/* ===== TIMER ===== */
+let totalSeconds = 2.5*3600;
+function updateTimer(){
+  let h=Math.floor(totalSeconds/3600);
+  let m=Math.floor((totalSeconds%3600)/60);
+  let s=Math.floor(totalSeconds%60);
+  document.getElementById('timer').textContent=`${h}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+  if(totalSeconds<=0){ alert("Perdu, retour au point de départ !"); location.reload();}
+  totalSeconds--;
+}
+updateTimer();
+setInterval(updateTimer,1000);
+
+/* ===== POINTS & ÉNIGMES ===== */
+const points = {
+  start:{name:"Hôtel Anne de Bretagne", address:"10/11 rue saint Thomas Saint-Malo", coords:[48.65063,-2.02474], next:"pt2"},
+  pt2:{name:"Café de Saint-Malo", address:"10 rue des Corsaires, Saint-Malo", coords:[48.65036,-2.02342], next:"pt3"},
+  pt3:{name:"La duchesse Anne", address:"5 quai Duguay-Trouin, Saint-Malo", coords:[48.65029,-2.02309], next:"pt4"},
+  pt4:{name:"Le Croiseur Ginette", address:"2 rue de l'Orme, Saint-Malo", coords:[48.64965,-2.02455], next:"pt5"},
+  pt5:{name:"Ibis Style", address:"2 rue de l'Orme, Saint-Malo", coords:[48.64865,-2.02402], next:"pt6"},
+  pt6:{name:"O Divino", address:"2 rue de l'Orme, Saint-Malo", coords:[48.64789,-2.02434], next:"pt7"}, 
+  pt7:{name:"Le Cambusier", address:"2 rue de l'Orme, Saint-Malo", coords:[48.64782,-2.02435], next:"pt8"},
+  pt8:{name:"Breizh Café", address:"2 rue de l'Orme, Saint-Malo", coords:[48.64808,-2.02511], next:"pt9"}, 
+  pt9:{name:"Le Columbus", address:"2 rue de l'Orme, Saint-Malo", coords:[48.64833,-2.02544], next:"pt10"}, 
+  pt10:{name:"Sanchez Glacier", address:"2 rue de l'Orme, Saint-Malo", coords:[48.64873,-2.02546], next:"pt11"}, 
+  pt11:{name:"Creperie Corps de garde", address:"2 rue de l'Orme, Saint-Malo", coords:[48.64890,-2.02818], next:null}
+};
+
+const enigmes = {
+  start:{q:"Qui est le corsaire emblématique de Saint-Malo ?",a:"surcouf",site:"https://hotel-annedebretagne.com/",offres:"https://www.francetravail.fr/accueil/"},
+  pt2:{q:"Qui est le corsaire emblématique de Saint-Malo ?",a:"surcouf",site:"#",offres:"#"},
+  pt3:{q:"Qui est le corsaire emblématique de Saint-Malo ?",a:"surcouf",site:"#",offres:"#"},
+  pt4:{q:"Qui est le corsaire emblématique de Saint-Malo ?",a:"surcouf",site:"#",offres:"#"},
+  pt5:{q:"Qui est le corsaire emblématique de Saint-Malo ?",a:"surcouf",site:"#",offres:"#"},
+  pt6:{q:"Qui est le corsaire emblématique de Saint-Malo ?",a:"surcouf",site:"#",offres:"#"},
+  pt7:{q:"Qui est le corsaire emblématique de Saint-Malo ?",a:"surcouf",site:"#",offres:"#"},
+  pt8:{q:"Qui est le corsaire emblématique de Saint-Malo ?",a:"surcouf",site:"#",offres:"#"},
+  pt9:{q:"Qui est le corsaire emblématique de Saint-Malo ?",a:"surcouf",site:"#",offres:"#"},
+  pt10:{q:"Qui est le corsaire emblématique de Saint-Malo ?",a:"surcouf",site:"#",offres:"#"},
+  pt11:{q:"Qui est le corsaire emblématique de Saint-Malo ?",a:"surcouf",site:"#",offres:"#"}
+};
+
+/* ===== MARQUEURS ===== */
+let markers = {};
+let continuousPath = [];
+let polyline = null;
+let confettiCanvas = document.getElementById('confetti-canvas');
+let myConfetti = confetti.create(confettiCanvas, { resize:true, useWorker:true });
+function launchConfetti(){ myConfetti({particleCount:200,spread:80,origin:{y:0.5}}); }
+
+/* Point de départ */
+let startIcon = L.icon({iconUrl:"https://cdn-icons-png.flaticon.com/512/535/535239.png",iconSize:[40,40],iconAnchor:[20,40]});
+markers["start"]=L.marker(points["start"].coords,{icon:startIcon}).addTo(map);
+markers["start"].bindPopup('<b>Point de départ :</b><br>Hôtel Anne de Bretagne').openPopup();
+
+/* Bulle cliquable */
+const startBubble = document.getElementById("start-bubble");
+function positionBubble(){
+  const pos = map.latLngToContainerPoint(points["start"].coords);
+  startBubble.style.left = pos.x - startBubble.offsetWidth/2 + "px";
+  startBubble.style.top = pos.y - 50 + "px";
+}
+positionBubble();
+window.addEventListener("resize", positionBubble);
+map.on("zoom move", positionBubble);
+startBubble.addEventListener("click", ()=>{
+  startBubble.style.display="none";
+  showEnigme("start");
+});
+
+/* Fonctions modales et parcours */
+function updateFullPath(){ if(polyline) map.removeLayer(polyline); polyline=L.polyline(continuousPath,{color:"#1d1e3c",weight:4}).addTo(map); }
+
+function showEnigme(key){
+  if(document.querySelector('.modal-bg')) return;
+  const modal=document.createElement('div');
+  modal.className='modal-bg';
+  modal.innerHTML=`
+    <div class="modal">
+      <span class="close-btn" onclick="closeModal()">×</span>
+      <h3>${points[key].name}</h3>
+      <p><b>Adresse :</b> ${points[key].address}</p>
+      <p>${enigmes[key].q}</p>
+      <input id="answerInput" style="padding:6px;width:90%;margin-top:10px"/>
+      <button onclick="checkAnswer('${key}')">Valider</button>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+function checkAnswer(key){
+  let val=document.getElementById('answerInput').value.trim().toLowerCase();
+  if(val===enigmes[key].a){
+    score+=2; updateScore(); closeModal();
+    launchConfetti();
+    continuousPath.push(points[key].coords); updateFullPath();
+    let next=points[key].next;
+    if(next) revealPoint(next);
+    else showCongrats();
+  } else alert("Mauvaise réponse !");
+}
+
+function revealPoint(key){
+  markers[key]=L.circleMarker(points[key].coords,{radius:12,color:"#1d1e3c",fillColor:"#1d1e3c",fillOpacity:1}).addTo(map);
+  markers[key].bindPopup(`<b><a href="#" onclick="showFullPopup('${key}')">${points[key].name}</a></b>`).openPopup();
+}
+
+function showFullPopup(key){
+  closeModal();
+  const p=points[key], e=enigmes[key];
+  const modal=document.createElement("div");
+  modal.className="modal-bg";
+  modal.innerHTML=`
+    <div class="modal">
+      <span class="close-btn" onclick="closeModal()">×</span>
+      <h2>${p.name}</h2>
+      <p><b>Adresse :</b> ${p.address}</p>
+      <p><b>Site :</b> <a href="${e.site}" target="_blank">${e.site}</a></p>
+      <p><b>Offres France Travail :</b> <a href="${e.offres}" target="_blank">${e.offres}</a></p>
+      <hr>
+      <p><b>Énigme :</b><br>${e.q}</p>
+      <input id="answer2" style="padding:6px;width:90%"/>
+      <button onclick="validateNext('${key}')">Valider</button>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+function validateNext(key){
+  let val=document.getElementById("answer2").value.trim().toLowerCase();
+  if(val!==enigmes[key].a) return alert("Mauvaise réponse !");
+  closeModal(); launchConfetti();
+  continuousPath.push(points[key].coords); updateFullPath();
+  let next=points[key].next;
+  if(next) revealPoint(next);
+  else showCongrats();
+}
+
+function closeModal(){ document.querySelectorAll('.modal-bg').forEach(m=>m.remove()); }
+
+function showCongrats(){
+  closeModal();
+  const modal=document.createElement("div");
+  modal.className="modal-bg";
+  modal.innerHTML=`
+    <div class="modal">
+      <span class="close-btn" onclick="closeModal()">×</span>
+      <h2>🎉 Bravo !</h2>
+      <p>Tu as terminé le parcours !</p>
+      <hr>
+      <button onclick="returnToStart()">Retour au départ</button>
+      <button onclick="location.reload()">Rejouer le parcours</button>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+function returnToStart(){
+  closeModal();
+  if(polyline) map.removeLayer(polyline);
+  polyline=L.polyline([points["start"].coords],{color:"red",weight:5}).addTo(map);
+  map.setView(points["start"].coords,17);
+}
+</script>
+</body>
+</html>
