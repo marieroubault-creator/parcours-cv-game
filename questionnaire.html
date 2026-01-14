@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Questionnaire de satisfaction – France Travail</title>
+
+<style>
+/* ================= BASE ================= */
+body {
+  font-family: Arial, sans-serif;
+  background: #f5f7fb;
+  color: #1d1e3c;
+  margin: 0;
+  padding: 40px 20px;
+}
+
+/* ================= POPUP RGPD ================= */
+.rgpd-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.rgpd-box {
+  background: #ffffff;
+  max-width: 600px;
+  padding: 35px;
+  border-radius: 20px;
+  text-align: center;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+}
+
+.rgpd-box h2 {
+  margin-top: 0;
+}
+
+.rgpd-box p {
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.rgpd-btn {
+  margin-top: 25px;
+  padding: 14px 30px;
+  background: #406BDE;
+  color: #ffffff;
+  border: none;
+  border-radius: 30px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.rgpd-btn.accepted {
+  background: #2ecc71;
+}
+
+/* ================= QUESTIONNAIRE ================= */
+.container {
+  max-width: 700px;
+  margin: auto;
+  background: #ffffff;
+  padding: 40px;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.container.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+h1 {
+  text-align: center;
+}
+
+p {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+label {
+  font-weight: bold;
+  display: block;
+  margin-top: 25px;
+}
+
+input[type="text"],
+textarea,
+select {
+  width: 100%;
+  padding: 12px;
+  margin-top: 8px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+textarea {
+  resize: vertical;
+}
+
+button.submit-btn {
+  margin-top: 40px;
+  width: 100%;
+  padding: 16px;
+  background: #406BDE;
+  color: white;
+  border: none;
+  border-radius: 30px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+button.submit-btn:hover {
+  background: #3559b8;
+}
+</style>
+</head>
+
+<body>
+
+<!-- POPUP RGPD -->
+<div class="rgpd-overlay" id="rgpdOverlay">
+  <div class="rgpd-box">
+    <h2>Protection des données personnelles</h2>
+    <p>
+      Les informations recueillies dans ce questionnaire sont utilisées par France Travail
+      uniquement dans le cadre de l’amélioration des parcours proposés.
+    </p>
+    <p>
+      L’identifiant France Travail permet d’analyser les retours et, le cas échéant,
+      de faciliter un accompagnement adapté.
+    </p>
+    <p>
+      Conformément au RGPD, vous disposez d’un droit d’accès, de rectification et de suppression
+      de vos données.
+    </p>
+
+    <button class="rgpd-btn" id="acceptRgpd">J’accepte</button>
+  </div>
+</div>
+
+<!-- QUESTIONNAIRE -->
+<div class="container" id="surveyContainer">
+  <h1>Votre avis compte</h1>
+  <p>Merci de consacrer quelques minutes à l’amélioration de nos parcours.</p>
+
+  <form id="surveyForm">
+
+    <label>Identifiant France Travail *</label>
+    <input type="text" required>
+
+    <label>Ce parcours vous a-t-il été utile ?</label>
+    <select>
+      <option>Très utile</option>
+      <option>Utile</option>
+      <option>Peu utile</option>
+      <option>Pas du tout utile</option>
+    </select>
+
+    <label>Les informations étaient-elles claires ?</label>
+    <select>
+      <option>Très claires</option>
+      <option>Plutôt claires</option>
+      <option>Peu claires</option>
+      <option>Pas claires</option>
+    </select>
+
+    <label>Avez-vous identifié des opportunités suite à ce parcours ?</label>
+    <select>
+      <option>Oui</option>
+      <option>Pas encore</option>
+      <option>Non</option>
+    </select>
+
+    <label>Souhaitez-vous être recontacté(e) par votre conseiller ?</label>
+    <select>
+      <option>Oui</option>
+      <option>Non</option>
+    </select>
+
+    <label>Commentaire ou suggestion (facultatif)</label>
+    <textarea rows="4"></textarea>
+
+    <button type="submit" class="submit-btn">Envoyer mon avis</button>
+  </form>
+</div>
+
+<script>
+/* ================= RGPD ================= */
+const acceptBtn = document.getElementById("acceptRgpd");
+const overlay = document.getElementById("rgpdOverlay");
+const container = document.getElementById("surveyContainer");
+
+acceptBtn.addEventListener("click", () => {
+  acceptBtn.classList.add("accepted");
+  acceptBtn.textContent = "Accepté";
+  setTimeout(() => {
+    overlay.style.display = "none";
+    container.classList.add("active");
+  }, 400);
+});
+
+/* ================= ENVOI PAR MAIL ================= */
+document.getElementById("surveyForm").addEventListener("submit", function(e) {
+  e.preventDefault();
+
+  const id = document.querySelector('input[type="text"]').value;
+  const selects = document.querySelectorAll("select");
+  const comment = document.querySelector("textarea").value;
+
+  const body =
+`Identifiant France Travail : ${id}
+
+Utilité du parcours : ${selects[0].value}
+Clarté des informations : ${selects[1].value}
+Opportunités identifiées : ${selects[2].value}
+Souhaite être recontacté(e) : ${selects[3].value}
+
+Commentaire :
+${comment}`;
+
+  window.location.href =
+    "mailto:marie.roubault@francetravail.fr" +
+    "?subject=Questionnaire de satisfaction – Parcours Saint-Malo" +
+    "&body=" + encodeURIComponent(body);
+
+  setTimeout(() => {
+    window.location.href = "merci.html";
+  }, 1000);
+});
+</script>
+
+</body>
+</html>
