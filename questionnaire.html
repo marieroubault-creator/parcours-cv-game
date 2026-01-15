@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Questionnaire de satisfaction – France Travail</title>
+
+<!-- Icônes -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<style>
+/* ================= BASE ================= */
+body {
+  margin: 0;
+  font-family: "Marianne", Arial, sans-serif;
+  background: #ffffff;
+  color: #1d1e3c;
+  overflow-x: hidden;
+  min-height: 100vh;
+  position: relative;
+  padding-bottom: 70px;
+}
+
+.ft-header {
+  background: #406bde;
+  color: white;
+  text-align: center;
+  padding: 6px 0;
+  font-weight: bold;
+  font-size: 16px;
+  position: relative;
+  z-index: 10;
+}
+
+.header {
+  background: #1d1e3c;
+  color: white;
+  padding: 18px 10px;
+  text-align: center;
+  border-bottom: 6px solid #6370c9;
+  position: relative;
+  z-index: 10;
+}
+
+.container {
+  max-width: 700px;
+  margin: auto;
+  padding: 80px 20px;
+  position: relative;
+  z-index: 2;
+  opacity: 0;
+  transform: translateY(30px);
+  animation: fadeIn 1s ease forwards;
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+/* ================= RGPD ================= */
+.rgpd-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.rgpd-box {
+  background: #ffffff;
+  max-width: 600px;
+  padding: 35px;
+  border-radius: 20px;
+  text-align: center;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+}
+
+.rgpd-box h2 {
+  margin-top: 0;
+}
+
+.rgpd-box p {
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.rgpd-btn {
+  margin-top: 25px;
+  padding: 14px 30px;
+  background: #406BDE;
+  color: #ffffff;
+  border: none;
+  border-radius: 30px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.rgpd-btn.accepted {
+  background: #2ecc71;
+}
+
+/* ================= FORMULAIRE ================= */
+h1 {
+  text-align: center;
+}
+
+p.intro {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+label {
+  font-weight: bold;
+  display: block;
+  margin-top: 25px;
+}
+
+input[type="text"],
+textarea,
+select {
+  width: 100%;
+  padding: 12px;
+  margin-top: 8px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+textarea {
+  resize: vertical;
+}
+
+button.submit-btn {
+  margin-top: 40px;
+  width: 100%;
+  padding: 16px;
+  background: #406BDE;
+  color: white;
+  border: none;
+  border-radius: 30px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.3s ease, transform 0.2s ease;
+}
+
+button.submit-btn:hover {
+  background: #3559b8;
+  transform: translateY(-3px);
+}
+
+button.submit-btn:active {
+  transform: scale(0.97);
+}
+
+/* ================= BULLES ================= */
+#bubbles {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.bubble {
+  position: absolute;
+  bottom: -150px;
+  border-radius: 50%;
+  opacity: 0.35;
+  animation: floatUp linear infinite;
+  z-index: 0;
+}
+
+@keyframes floatUp {
+  from { transform: translateY(0); opacity: 0.35; }
+  to { transform: translateY(-120vh); opacity: 0; }
+}
+
+/* ================= ANIMATIONS ================= */
+@keyframes fadeIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ================= FOOTER ================= */
+.footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: #a9c4ff;
+  color: #1d1e3c;
+  text-align: center;
+  padding: 12px 10px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  z-index: 10;
+}
+</style>
+</head>
+
+<body>
+
+<div class="ft-header">France Travail</div>
+
+<div class="header">
+  <h1>Parcours à la carte</h1>
+</div>
+
+<!-- Bulles -->
+<div id="bubbles"></div>
+
+<!-- POPUP RGPD -->
+<div class="rgpd-overlay" id="rgpdOverlay">
+  <div class="rgpd-box">
+    <h2>Protection des données personnelles</h2>
+    <p>
+      Les informations recueillies dans ce questionnaire sont utilisées par France Travail
+      uniquement dans le cadre de l’amélioration des parcours proposés.
+    </p>
+    <p>
+      L’identifiant France Travail permet d’analyser les retours et, le cas échéant,
+      de faciliter un accompagnement adapté.
+    </p>
+    <p>
+      Conformément au RGPD, vous disposez d’un droit d’accès, de rectification et de suppression
+      de vos données.
+    </p>
+
+    <button class="rgpd-btn" id="acceptRgpd">J’accepte</button>
+  </div>
+</div>
+
+<!-- FORMULAIRE -->
+<div class="container" id="surveyContainer">
+  <h1>Votre avis compte</h1>
+  <p class="intro">Merci de consacrer quelques minutes à l’amélioration de nos parcours.</p>
+
+  <form id="surveyForm">
+
+    <label>Identifiant France Travail *</label>
+    <input type="text" required>
+
+    <label>Ce parcours vous a-t-il été utile ?</label>
+    <select>
+      <option>Très utile</option>
+      <option>Utile</option>
+      <option>Peu utile</option>
+      <option>Pas du tout utile</option>
+    </select>
+
+    <label>Les informations étaient-elles claires ?</label>
+    <select>
+      <option>Très claires</option>
+      <option>Plutôt claires</option>
+      <option>Peu claires</option>
+      <option>Pas claires</option>
+    </select>
+
+    <label>Avez-vous identifié des opportunités suite à ce parcours ?</label>
+    <select>
+      <option>Oui</option>
+      <option>Pas encore</option>
+      <option>Non</option>
+    </select>
+
+    <label>Souhaitez-vous être recontacté(e) par votre conseiller ?</label>
+    <select>
+      <option>Oui</option>
+      <option>Non</option>
+    </select>
+
+    <label>Commentaire ou suggestion (facultatif)</label>
+    <textarea rows="4"></textarea>
+
+    <button type="submit" class="submit-btn">Envoyer mon avis</button>
+  </form>
+</div>
+
+<div class="footer">© France Travail – Parcours à la carte | Dites le nous une fois</div>
+
+<script>
+/* ================= GENERATION BULLES ================= */
+const bubbleContainer = document.getElementById('bubbles');
+const colors = ['#406bde', '#6370c9', '#00a8e8'];
+
+function createBubble() {
+  const bubble = document.createElement('div');
+  bubble.classList.add('bubble');
+
+  const size = Math.random() * 120 + 40;
+  bubble.style.width = size + 'px';
+  bubble.style.height = size + 'px';
+  bubble.style.left = Math.random() * 100 + '%';
+  bubble.style.background = colors[Math.floor(Math.random() * colors.length)];
+  bubble.style.animationDuration = (Math.random() * 15 + 15) + 's';
+
+  bubbleContainer.appendChild(bubble);
+
+  setTimeout(() => bubble.remove(), 30000);
+}
+
+setInterval(createBubble, 1200);
+
+/* ================= RGPD ================= */
+const acceptBtn = document.getElementById("acceptRgpd");
+const overlay = document.getElementById("rgpdOverlay");
+const container = document.getElementById("surveyContainer");
+
+acceptBtn.addEventListener("click", () => {
+  acceptBtn.classList.add("accepted");
+  acceptBtn.textContent = "Accepté";
+  setTimeout(() => {
+    overlay.style.display = "none";
+    container.classList.add("active");
+  }, 400);
+});
+
+/* ================= ENVOI PAR MAIL ================= */
+document.getElementById("surveyForm").addEventListener("submit", function(e) {
+  e.preventDefault();
+
+  const id = document.querySelector('input[type="text"]').value;
+  const selects = document.querySelectorAll("select");
+  const comment = document.querySelector("textarea").value;
+
+  const body =
+`Identifiant France Travail : ${id}
+
+Utilité du parcours : ${selects[0].value}
+Clarté des informations : ${selects[1].value}
+Opportunités identifiées : ${selects[2].value}
+Souhaite être recontacté(e) : ${selects[3].value}
+
+Commentaire :
+${comment}`;
+
+  window.location.href =
+    "mailto:ape.35007@francetravail.fr" +
+    "?subject=Questionnaire de satisfaction – Parcours Saint-Malo" +
+    "&body=" + encodeURIComponent(body);
+
+setTimeout(() => {
+    window.location.href = "thankyou.html";
+}, 1500); // 1,5 seconde
+
+});
+</script>
+
+</body>
+</html>
